@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Home, 
   Info, 
   PlusCircle, 
   Award, 
-  Dna, 
   Menu as MenuIcon, 
-  X 
+  X,
+  Github,
+  Mail,
+  ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import HomeView from './components/HomeView';
@@ -18,114 +20,98 @@ type View = 'home' | 'about' | 'add-version' | 'credits';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('home');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const navItems = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'about', label: 'About Us', icon: Info },
-    { id: 'add-version', label: 'Add Version', icon: PlusCircle },
-    { id: 'credits', label: 'Credits', icon: Award },
+    { id: 'home', label: 'Home', icon: Home, group: 'Main' },
+    { id: 'add-version', label: 'Add Version', icon: PlusCircle, group: 'Settings' },
+    { id: 'about', label: 'About Us', icon: Info, group: 'Info' },
+    { id: 'credits', label: 'Credits', icon: Award, group: 'Info' },
   ];
 
-  return (
-    <div className="flex h-screen bg-brand-bg font-sans text-brand-text overflow-hidden relative">
-      {/* DNA Gradient Background Effect */}
-      <div className="fixed inset-0 pointer-events-none z-0 opacity-10">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(61, 220, 110, 0.2) 40px, rgba(61, 220, 110, 0.2) 41px),
-                            repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(61, 220, 110, 0.2) 40px, rgba(61, 220, 110, 0.2) 41px)`
-        }} />
-      </div>
+  const handleNavClick = (view: View) => {
+    setCurrentView(view);
+    setIsSidebarOpen(false);
+  };
 
-      {/* Mobile Sidebar Toggle */}
+  return (
+    <div className="flex min-h-screen bg-brand-bg font-sans text-brand-text relative">
+      {/* DNA Gradient Background Effect */}
+      <div className="dna-bg" />
+
+      {/* Mobile Menu Toggle */}
       <button 
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-brand-card rounded-md shadow-sm border border-brand-border"
+        className="lg:hidden fixed top-6 right-6 z-50 w-12 h-12 flex items-center justify-center bg-brand-bg2 border border-brand-border rounded-xl text-brand-accent shadow-2xl"
       >
-        {isSidebarOpen ? <X size={20} className="text-brand-accent" /> : <MenuIcon size={20} className="text-brand-accent" />}
+        {isSidebarOpen ? <X size={24} /> : <MenuIcon size={24} />}
       </button>
 
       {/* Sidebar */}
-      <AnimatePresence mode="wait">
-        {isSidebarOpen && (
-          <motion.aside
-            initial={{ x: -280 }}
-            animate={{ x: 0 }}
-            exit={{ x: -280 }}
-            className="w-64 bg-brand-card border-r border-brand-border flex flex-col z-40 fixed lg:relative h-full"
-          >
-            <div className="p-8 border-b border-brand-border relative overflow-hidden group">
-              <div className="scanning-bar group-hover:opacity-60 transition-opacity" />
-              <h1 className="text-xl font-mono font-bold tracking-[0.2em] text-brand-accent flex items-center gap-2">
-                BIOALIGN <span className="w-1.5 h-1.5 bg-brand-accent rounded-full animate-pulse shadow-[0_0_8px_rgba(61,220,110,0.8)]" />
-              </h1>
-              <span className="text-[10px] font-mono text-brand-muted mt-1 block tracking-wider uppercase">System_Status: <span className="text-brand-accent opacity-80">STABLE</span></span>
+      <aside 
+        className={`fixed inset-y-0 left-0 z-40 w-60 bg-brand-bg2 border-r border-brand-border transition-transform duration-300 lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="p-8 border-b border-brand-border group relative overflow-hidden">
+          <div className="scanning-bar opacity-0 group-hover:opacity-10 transition-opacity" />
+          <h1 className="text-xl font-mono font-bold tracking-[0.2em] text-brand-accent whitespace-nowrap">
+            BIOALIGN <span className="text-brand-text/20 font-light">_</span>
+          </h1>
+          <p className="text-[10px] font-mono text-brand-muted mt-1 uppercase tracking-widest whitespace-nowrap">v1.0 · DNA Alignment Tool</p>
+        </div>
+
+        <nav className="py-8">
+          {['Main', 'Settings', 'Info'].map((group) => (
+            <div key={group} className="mb-6">
+              <div className="px-8 py-2 text-[10px] font-mono text-brand-muted uppercase tracking-[0.2em] mb-2">{group}</div>
+              {navItems.filter(item => item.group === group).map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id as View)}
+                  className={`w-full flex items-center gap-3 px-8 py-3 transition-all duration-200 border-l-2 text-sm ${
+                    currentView === item.id 
+                      ? 'bg-brand-accent/5 text-brand-accent border-brand-accent font-medium' 
+                      : 'text-brand-muted hover:text-brand-accent/80 border-transparent hover:bg-brand-accent/[0.02]'
+                  }`}
+                >
+                  <item.icon size={16} />
+                  {item.label}
+                </button>
+              ))}
             </div>
+          ))}
+        </nav>
 
-            <nav className="flex-1 px-0 py-4 space-y-1">
-              <div className="px-6 py-2 text-[10px] font-mono text-brand-muted uppercase tracking-[0.15em]">Main</div>
-              {navItems.slice(0, 1).map((item) => (
-                <SidebarItem key={item.id} item={item} current={currentView} onClick={() => {
-                  setCurrentView(item.id as View);
-                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                }} />
-              ))}
-              
-              <div className="px-6 py-2 mt-4 text-[10px] font-mono text-brand-muted uppercase tracking-[0.15em]">Advanced</div>
-              {navItems.slice(2, 3).map((item) => (
-                <SidebarItem key={item.id} item={item} current={currentView} onClick={() => {
-                  setCurrentView(item.id as View);
-                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                }} />
-              ))}
-
-              <div className="px-6 py-2 mt-4 text-[10px] font-mono text-brand-muted uppercase tracking-[0.15em]">Info</div>
-              {[navItems[1], navItems[3]].map((item) => (
-                <SidebarItem key={item.id} item={item} current={currentView} onClick={() => {
-                  setCurrentView(item.id as View);
-                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                }} />
-              ))}
-            </nav>
-
-            <div className="p-6 border-t border-brand-border">
-              <div className="bg-brand-bg/50 p-4 rounded-lg border border-brand-border/50">
-                <p className="text-[10px] font-mono text-brand-muted uppercase tracking-widest">BCB Project</p>
-                <p className="text-xs font-mono text-brand-accent mt-1">2026 Edition</p>
-              </div>
-            </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
+        <div className="absolute bottom-0 left-0 right-0 p-8 border-t border-brand-border bg-brand-bg2">
+          <p className="text-[10px] font-mono text-brand-muted leading-relaxed uppercase tracking-widest">
+            BCB Project · 2026<br />
+            <span className="text-brand-accent/50">Dept of Bioinformatics</span>
+          </p>
+        </div>
+      </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto relative p-4 lg:p-12 z-10">
-        <div className="max-w-4xl mx-auto">
+      <main className="flex-1 lg:ml-60 min-h-screen relative z-10 overflow-x-hidden">
+        <div className="max-w-4xl p-8 lg:p-16">
           <AnimatePresence mode="wait">
-            {currentView === 'home' && <HomeView key="home" />}
-            {currentView === 'about' && <AboutView key="about" />}
-            {currentView === 'credits' && <CreditsView key="credits" />}
-            {currentView === 'add-version' && <AddVersionView key="add-version" />}
+            <motion.div
+              key={currentView}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
+              {currentView === 'home' && <HomeView />}
+              {currentView === 'about' && <AboutView />}
+              {currentView === 'credits' && <CreditsView />}
+              {currentView === 'add-version' && <AddVersionView />}
+            </motion.div>
           </AnimatePresence>
         </div>
       </main>
+
+      {/* Website Footer - removed as requested dashboard like look */}
     </div>
   );
 }
-
-const SidebarItem: React.FC<{ item: any, current: string, onClick: () => void }> = ({ item, current, onClick }) => {
-  const active = current === item.id;
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full flex items-center gap-3 px-6 py-3 transition-all duration-200 border-l-2 ${
-        active 
-          ? 'bg-brand-accent/5 text-brand-accent border-brand-accent' 
-          : 'text-brand-muted hover:bg-brand-accent/5 hover:text-brand-accent border-transparent'
-      }`}
-    >
-      <item.icon size={18} />
-      <span className="text-sm font-medium">{item.label}</span>
-    </button>
-  );
-};

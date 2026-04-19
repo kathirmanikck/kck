@@ -72,29 +72,60 @@ export default function HomeView() {
   const [result, setResult] = useState<AlignmentResult | null>(null);
   const [benchmark, setBenchmark] = useState<BenchmarkData[] | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const validateDNA = (seq: string) => {
+    return /^[ATGC]*$/.test(seq.toUpperCase());
+  };
 
   const handleRun = async () => {
+    setError(null);
+    
+    // Validate Step 1 & 2
+    if (!subjectDNA) {
+      setError("Please provide a subject DNA strand.");
+      return;
+    }
+    if (!validateDNA(subjectDNA)) {
+      setError("Subject contains invalid characters. Only A, T, G, C are allowed.");
+      return;
+    }
+
+    let templateToUse = '';
+    if (version === 'v1') {
+      templateToUse = useCustomTemplate ? customTemplateSequence : selectedTemplate.sequence;
+      if (!templateToUse) {
+        setError("Please ensure a template sequence is provided for V1.");
+        return;
+      }
+      if (!validateDNA(templateToUse)) {
+        setError("Template contains invalid characters. Only A, T, G, C are allowed.");
+        return;
+      }
+    }
+
     setIsProcessing(true);
     setResult(null);
     setBenchmark(null);
     
+    // Simulate processing
     await new Promise(r => setTimeout(r, 800));
 
-    if (version === 'v1') {
-      const templateToUse = useCustomTemplate ? customTemplateSequence : selectedTemplate.sequence;
-      if (!templateToUse) {
-        setIsProcessing(false);
-        return;
+    try {
+      if (version === 'v1') {
+        const res = alignDNA(templateToUse, subjectDNA);
+        setResult(res);
+      } else if (version === 'v2') {
+        const template = generateRandomDNA(randomLength);
+        const res = alignDNA(template, subjectDNA);
+        setResult(res);
+      } else if (version === 'v3') {
+        const data = runBenchmark(randomLength, subjectDNA);
+        setBenchmark(data);
       }
-      const res = alignDNA(templateToUse, subjectDNA);
-      setResult(res);
-    } else if (version === 'v2') {
-      const template = generateRandomDNA(randomLength);
-      const res = alignDNA(template, subjectDNA);
-      setResult(res);
-    } else if (version === 'v3') {
-      const data = runBenchmark(randomLength, subjectDNA);
-      setBenchmark(data);
+    } catch (err) {
+      setError("An error occurred during alignment processing.");
+      console.error(err);
     }
 
     setIsProcessing(false);
@@ -107,135 +138,271 @@ export default function HomeView() {
       exit={{ opacity: 0, y: -20 }}
       className="space-y-12"
     >
-      <header className="space-y-2">
-        <h2 className="text-3xl font-mono font-bold tracking-tight text-brand-text">
+      <header className="space-y-2 mb-10">
+        <h2 className="text-4xl font-mono font-bold tracking-tight text-brand-text">
           DNA<span className="text-brand-accent">Align _</span>
         </h2>
-        <p className="text-brand-muted max-w-lg text-sm font-sans">Choose your template, input your subject strand, pick a version, and run the alignment algorithm.</p>
+        <p className="text-brand-muted max-w-lg text-base font-sans leading-relaxed">Choose your template, input your subject strand, pick a version, and run the alignment algorithm.</p>
       </header>
 
-      {/* 01 - Template Selection */}
+      {error && (
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="p-4 bg-brand-danger/10 border border-brand-danger/30 rounded-xl text-brand-danger font-mono text-xs flex items-center gap-3"
+        >
+          <div className="w-2 h-2 rounded-full bg-brand-danger animate-pulse" />
+          {error}
+        </motion.div>
+      )}
+
+      {/* 01 - Algorithm Selection */}
       <section className="space-y-4">
         <div className="flex items-center gap-3">
-          <span className="font-mono text-[10px] text-brand-muted uppercase tracking-[0.2em]">
-            <span className="italic font-serif normal-case text-brand-accent mr-1">Step</span> 01 — Template Sequence
-          </span>
-          <div className="flex-1 h-px bg-brand-border"></div>
+          <div className="text-[10px] font-mono text-brand-muted uppercase tracking-[0.2em]">01 — Algorithm Version</div>
+          <div className="flex-1 h-px bg-brand-border" />
         </div>
-        
-        <div 
-          onClick={() => setActivePanel(activePanel === 'template' ? null : 'template')}
-          className={`glass-card p-6 cursor-pointer group transition-all relative overflow-hidden ${activePanel === 'template' ? 'border-brand-accent bg-brand-accent/[0.03]' : 'hover:border-brand-accent/50'}`}
-        >
-          <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-xl transition-colors ${activePanel === 'template' ? 'bg-brand-accent text-brand-bg' : 'bg-brand-accent/10 text-brand-accent'}`}>
-              <FlaskConical size={24} />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-brand-text group-hover:text-brand-accent transition-colors">Template DNA</h3>
-              <p className="text-xs text-brand-muted mt-1 uppercase tracking-wider font-mono">
-                {useCustomTemplate ? 'Custom Sequence' : `Library: ${selectedTemplate.code}`}
-              </p>
-              {!activePanel && <DNAStats sequence={useCustomTemplate ? customTemplateSequence : selectedTemplate.sequence} />}
-            </div>
-            <div className={`text-[10px] font-mono px-3 py-1 rounded-full border transition-all ${activePanel === 'template' ? 'border-brand-accent text-brand-accent bg-brand-accent/10' : 'border-brand-border text-brand-muted'}`}>
-              SELECT
-            </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div 
+            onClick={() => setVersion('v1')}
+            className={`version-card p-6 border rounded-xl cursor-pointer transition-all bg-brand-bg2/50 relative ${version === 'v1' ? 'border-brand-accent bg-brand-accent/[0.05] ring-1 ring-brand-accent' : 'border-brand-border hover:border-brand-accent/50'}`}
+          >
+            <div className="text-[10px] font-mono text-brand-accent uppercase tracking-widest mb-3 bg-brand-accent/10 px-2 py-0.5 rounded inline-block">v1 · Linear Scan</div>
+            <h4 className="text-sm font-medium text-brand-text mb-2 tracking-tight uppercase">Basic Index Search</h4>
+            <p className="text-xs text-brand-muted leading-relaxed">Linear scan with indexing. Reports position and repetition count of subject in template.</p>
           </div>
 
-          <AnimatePresence>
-            {activePanel === 'template' && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()}
-                className="pt-8 cursor-default"
-              >
-                <div className="space-y-6">
-                  <div className="flex gap-2 p-1 bg-brand-bg border border-brand-border rounded-xl">
-                    <button 
-                      onClick={() => setUseCustomTemplate(false)}
-                      className={`flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider rounded-lg transition-all ${!useCustomTemplate ? 'bg-brand-card text-brand-accent border border-brand-border' : 'text-brand-muted'}`}
-                    >
-                      Organism Library
-                    </button>
-                    <button 
-                      onClick={() => setUseCustomTemplate(true)}
-                      className={`flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider rounded-lg transition-all ${useCustomTemplate ? 'bg-brand-card text-brand-accent border border-brand-border' : 'text-brand-muted'}`}
-                    >
-                      Custom Paste
-                    </button>
-                  </div>
+          <div 
+            onClick={() => setVersion('v2')}
+            className={`version-card p-6 border rounded-xl cursor-pointer transition-all bg-brand-bg2/50 relative ${version === 'v2' ? 'border-brand-accent bg-brand-accent/[0.05] ring-1 ring-brand-accent' : 'border-brand-border hover:border-brand-accent/50'}`}
+          >
+            <div className="text-[10px] font-mono text-brand-accent uppercase tracking-widest mb-3 bg-brand-accent/10 px-2 py-0.5 rounded inline-block">v2 · Randomised</div>
+            <h4 className="text-sm font-medium text-brand-text mb-2 tracking-tight uppercase">Random Gen + Search</h4>
+            <p className="text-xs text-brand-muted leading-relaxed">Generates a random template from N nucleotides, then aligns your subject against it.</p>
+          </div>
 
-                  {!useCustomTemplate ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-brand-border">
-                      {TEMPLATE_DATABASE.map((t) => (
-                        <button
-                          key={t.id}
-                          onClick={() => setSelectedTemplate(t)}
-                          className={`p-4 text-left border rounded-xl transition-all ${
-                            selectedTemplate.id === t.id 
-                              ? 'border-brand-accent bg-brand-accent/5 ring-1 ring-brand-accent' 
-                              : 'border-brand-border bg-brand-bg/50 hover:border-brand-muted'
-                          }`}
-                        >
-                          <p className={`text-sm font-bold ${selectedTemplate.id === t.id ? 'text-brand-accent' : 'text-brand-text'}`}>{t.name}</p>
-                          <p className="text-[10px] font-mono text-brand-muted mt-1">{t.code}</p>
-                          <p className="text-[9px] font-mono text-brand-accent/50 mt-2 uppercase tracking-widest">{t.type}</p>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <textarea 
-                        value={customTemplateSequence}
-                        onChange={(e) => setCustomTemplateSequence(e.target.value.toUpperCase().replace(/[^ACGT]/g, ''))}
-                        placeholder="Paste your template DNA here (A, T, G, C only)..."
-                        className="w-full h-32 px-4 py-3 bg-brand-bg border border-brand-border rounded-xl font-mono text-xs text-brand-accent focus:outline-none focus:border-brand-accent resize-none transition-all"
-                      />
-                      {customTemplateSequence && (
-                        <div className="p-3 bg-brand-bg rounded-lg border border-brand-border">
-                          <p className="text-[10px] font-mono text-brand-muted mb-2 uppercase tracking-widest">// Preview ({customTemplateSequence.length}nt)</p>
-                          <DNAString sequence={customTemplateSequence.slice(0, 100)} className="text-[10px]" />
-                          {customTemplateSequence.length > 100 && <span className="text-brand-muted text-[10px]">...</span>}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <div 
+            onClick={() => setVersion('v3')}
+            className={`version-card p-6 border rounded-xl cursor-pointer transition-all bg-brand-bg2/50 relative ${version === 'v3' ? 'border-brand-accent bg-brand-accent/[0.05] ring-1 ring-brand-accent' : 'border-brand-border hover:border-brand-accent/50'}`}
+          >
+            <div className="text-[10px] font-mono text-brand-accent uppercase tracking-widest mb-3 bg-brand-accent/10 px-2 py-0.5 rounded inline-block">v3 · Benchmark</div>
+            <h4 className="text-sm font-medium text-brand-text mb-2 tracking-tight uppercase">10-Run Doubling Test</h4>
+            <p className="text-xs text-brand-muted leading-relaxed">Runs alignment 10 times. Template doubles each run. Plots time vs template size graph.</p>
+          </div>
+
+          <div className="version-card p-6 border border-brand-border rounded-xl bg-brand-bg2/30 opacity-60 cursor-not-allowed relative">
+            <div className="text-[10px] font-mono text-brand-accent uppercase tracking-widest mb-3 bg-brand-accent/10 px-2 py-0.5 rounded inline-block">v4 · Advanced</div>
+            <h4 className="text-sm font-medium text-brand-text mb-2 tracking-tight uppercase">Coming Soon</h4>
+            <p className="text-xs text-brand-muted leading-relaxed">Advanced alignment algorithm. Add yours from the menu → Add Version.</p>
+            <div className="absolute top-4 right-4 text-[9px] font-mono bg-brand-warning/10 text-brand-warning border border-brand-warning/30 px-2 py-0.5 rounded uppercase tracking-tighter">SOON</div>
+          </div>
         </div>
       </section>
 
-      {/* 02 - Subject Input */}
+      {/* 02 - Conditional Input (Template or Config) */}
+      <AnimatePresence mode="wait">
+        {version === 'v1' ? (
+          <motion.section 
+            key="v1-template"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="space-y-4"
+          >
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-[10px] text-brand-muted uppercase tracking-[0.2em]">
+                <span className="italic font-serif normal-case text-brand-accent mr-1">Step</span> 02 — Template Sequence
+              </span>
+              <div className="flex-1 h-px bg-brand-border"></div>
+            </div>
+            
+            <div 
+              onClick={() => setActivePanel(activePanel === 'template' ? null : 'template')}
+              className={`action-card ${activePanel === 'template' ? 'border-brand-accent bg-brand-accent/[0.08]' : ''}`}
+            >
+              <div className="flex items-center gap-4">
+                <div className="card-icon w-12 h-12 rounded-xl bg-brand-accent/10 flex items-center justify-center text-xl">🧬</div>
+                <div className="flex-1">
+                  <h3 className="text-base font-medium text-brand-text">Template DNA</h3>
+                  <p className="text-xs text-brand-muted mt-1 uppercase tracking-wider font-mono">
+                    {useCustomTemplate ? 'Custom Sequence' : `Library: ${selectedTemplate.code}`}
+                  </p>
+                  {!activePanel && <DNAStats sequence={useCustomTemplate ? customTemplateSequence : selectedTemplate.sequence} />}
+                </div>
+                <div className="absolute top-4 right-4 text-[9px] font-mono tracking-widest text-brand-accent border border-brand-accent/30 px-2 py-0.5 rounded bg-brand-accent/10">
+                  {activePanel === 'template' ? 'OPEN' : 'SELECT'}
+                </div>
+              </div>
+
+              <AnimatePresence>
+                {activePanel === 'template' && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="pt-8 cursor-default"
+                  >
+                    <div className="space-y-6">
+                      <div className="flex gap-2 p-1 bg-brand-bg border border-brand-border rounded-xl">
+                        <button 
+                          onClick={() => setUseCustomTemplate(false)}
+                          className={`flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider rounded-lg transition-all ${!useCustomTemplate ? 'bg-brand-card text-brand-accent border border-brand-border' : 'text-brand-muted'}`}
+                        >
+                          Organism Library
+                        </button>
+                        <button 
+                          onClick={() => setUseCustomTemplate(true)}
+                          className={`flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider rounded-lg transition-all ${useCustomTemplate ? 'bg-brand-card text-brand-accent border border-brand-border' : 'text-brand-muted'}`}
+                        >
+                          Custom Paste
+                        </button>
+                      </div>
+
+                      {!useCustomTemplate ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-brand-border">
+                          {TEMPLATE_DATABASE.map((t) => (
+                            <button
+                              key={t.id}
+                              onClick={() => {
+                                setSelectedTemplate(t);
+                                setActivePanel(null);
+                              }}
+                              className={`p-4 text-left border rounded-xl transition-all ${
+                                selectedTemplate.id === t.id 
+                                  ? 'border-brand-accent bg-brand-accent/5 ring-1 ring-brand-accent' 
+                                  : 'border-brand-border bg-brand-bg/50 hover:border-brand-muted'
+                              }`}
+                            >
+                              <p className={`text-sm font-bold ${selectedTemplate.id === t.id ? 'text-brand-accent' : 'text-brand-text'}`}>{t.name}</p>
+                              <p className="text-[10px] font-mono text-brand-muted mt-1">{t.code}</p>
+                              <p className="text-[9px] font-mono text-brand-accent/50 mt-2 uppercase tracking-widest">{t.type}</p>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="relative">
+                            <textarea 
+                              value={customTemplateSequence}
+                              onChange={(e) => {
+                                const val = e.target.value.toUpperCase();
+                                setCustomTemplateSequence(val);
+                                if (!validateDNA(val)) {
+                                  setError("Invalid characters detected in template. Alignment will fail unless corrected.");
+                                } else {
+                                  setError(null);
+                                }
+                              }}
+                              placeholder="Paste your template DNA here (A, T, G, C only)..."
+                              className={`w-full h-32 px-4 py-3 bg-brand-bg border rounded-xl font-mono text-xs text-brand-accent focus:outline-none transition-all resize-none ${!validateDNA(customTemplateSequence) ? 'border-brand-danger/50' : 'border-brand-border focus:border-brand-accent'}`}
+                            />
+                            <div className="absolute bottom-4 right-4 text-[10px] font-mono text-brand-muted opacity-40">
+                              {customTemplateSequence.length}nt
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <span className="text-[10px] font-mono text-brand-muted uppercase tracking-widest mr-2">Quick_Gen:</span>
+                            {[20, 50, 100].map(n => (
+                              <button 
+                                key={n}
+                                onClick={() => {
+                                  setCustomTemplateSequence(generateRandomDNA(n));
+                                  setError(null);
+                                }}
+                                className="px-3 py-1 bg-brand-bg2 border border-brand-border rounded-full text-[10px] font-mono text-brand-muted hover:text-brand-accent hover:border-brand-accent transition-all"
+                              >
+                                RANDOM_{n}nt
+                              </button>
+                            ))}
+                            <button 
+                              onClick={() => {
+                                if (validateDNA(customTemplateSequence) && customTemplateSequence.length > 0) {
+                                  setActivePanel(null);
+                                  setError(null);
+                                }
+                              }}
+                              disabled={!validateDNA(customTemplateSequence) || customTemplateSequence.length === 0}
+                              className="ml-auto px-4 py-1.5 bg-brand-accent disabled:opacity-30 text-brand-bg rounded-lg text-xs font-mono font-bold hover:scale-105 transition-transform"
+                            >
+                              USE_THIS ✓
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.section>
+        ) : (
+          <motion.section 
+            key="v2-v3-config"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="space-y-4"
+          >
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-[10px] text-brand-muted uppercase tracking-[0.2em]">
+                <span className="italic font-serif normal-case text-brand-accent mr-1">Step</span> 02 — Configuration
+              </span>
+              <div className="flex-1 h-px bg-brand-border"></div>
+            </div>
+
+            <div className="p-8 bg-brand-bg2/50 border border-brand-border rounded-2xl space-y-6 relative overflow-hidden group">
+              <div className="scanning-bar opacity-5 group-hover:opacity-10 transition-opacity" />
+              <div className="flex justify-between items-center relative z-10">
+                <h4 className="text-[10px] font-mono text-brand-muted uppercase tracking-[0.2em]">
+                  {version === 'v2' ? 'Template Size Configuration' : 'Base Template Complexity'}
+                </h4>
+                <span className="text-brand-accent font-mono text-xl">{randomLength}nt</span>
+              </div>
+              <input 
+                type="range"
+                min="20"
+                max={version === 'v2' ? 1000 : 500}
+                value={randomLength}
+                onChange={(e) => setRandomLength(parseInt(e.target.value))}
+                className="w-full accent-brand-accent relative z-10"
+              />
+              {version === 'v3' && (
+                <p className="text-[10px] text-brand-muted font-mono leading-relaxed relative z-10">
+                  WILL RUN 10 ITERATIONS: <span className="text-brand-accent">{randomLength}nt</span> → <span className="text-brand-accent">{(randomLength * Math.pow(2, 9)).toLocaleString()}nt</span> TEMPLATE SIZES
+                </p>
+              )}
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+
+      {/* 03 - Subject Input */}
       <section className="space-y-4">
         <div className="flex items-center gap-3">
           <span className="font-mono text-[10px] text-brand-muted uppercase tracking-[0.2em]">
-            <span className="italic font-serif normal-case text-brand-accent mr-1">Step</span> 02 — Subject Strand
+            <span className="italic font-serif normal-case text-brand-accent mr-1">Step</span> 03 — Subject Strand
           </span>
           <div className="flex-1 h-px bg-brand-border"></div>
         </div>
 
         <div 
           onClick={() => setActivePanel(activePanel === 'subject' ? null : 'subject')}
-          className={`glass-card p-6 cursor-pointer group transition-all relative overflow-hidden ${activePanel === 'subject' ? 'border-brand-accent bg-brand-accent/[0.03]' : 'hover:border-brand-accent/50'}`}
+          className={`action-card ${activePanel === 'subject' ? 'border-brand-accent bg-brand-accent/[0.08]' : ''}`}
         >
           <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-xl transition-colors ${activePanel === 'subject' ? 'bg-brand-accent text-brand-bg' : 'bg-brand-accent/10 text-brand-accent'}`}>
-              <Microscope size={24} />
-            </div>
+            <div className="card-icon w-12 h-12 rounded-xl bg-brand-accent/10 flex items-center justify-center text-xl">🔬</div>
             <div className="flex-1">
-              <h3 className="font-bold text-brand-text group-hover:text-brand-accent transition-colors">Subject DNA</h3>
+              <h3 className="text-base font-medium text-brand-text">Subject Strand</h3>
               <p className="text-xs text-brand-muted mt-1 uppercase tracking-wider font-mono">
                 {subjectDNA ? `${subjectDNA.length}nt Sequence Target` : 'INPUT_REQUIRED'}
               </p>
               {!activePanel && subjectDNA && <DNAStats sequence={subjectDNA} />}
             </div>
-            <div className={`text-[10px] font-mono px-3 py-1 rounded-full border transition-all ${activePanel === 'subject' ? 'border-brand-accent text-brand-accent bg-brand-accent/10' : 'border-brand-border text-brand-muted'}`}>
-              INPUT
+            <div className="absolute top-4 right-4 text-[9px] font-mono tracking-widest text-brand-accent border border-brand-accent/30 px-2 py-0.5 rounded bg-brand-accent/10">
+              {activePanel === 'subject' ? 'OPEN' : 'INPUT'}
             </div>
           </div>
 
@@ -249,28 +416,60 @@ export default function HomeView() {
                 className="pt-8 cursor-default"
               >
                 <div className="space-y-4">
-                  <textarea
-                    value={subjectDNA}
-                    onChange={(e) => setSubjectDNA(e.target.value.toUpperCase().replace(/[^ACGT]/g, ''))}
-                    placeholder="Enter subject DNA strand (e.g. ATGCTAGC)..."
-                    className="w-full h-32 px-4 py-3 bg-brand-bg border border-brand-border rounded-xl font-mono text-xs text-brand-accent focus:outline-none focus:border-brand-accent resize-none transition-all"
-                  />
-                  <div className="flex flex-wrap gap-2">
+                  <div className="relative">
+                    <textarea
+                      value={subjectDNA}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase();
+                        setSubjectDNA(val);
+                        if (!validateDNA(val)) {
+                          setError("Invalid characters detected in subject strand. Use only A, T, G, C.");
+                        } else {
+                          setError(null);
+                        }
+                      }}
+                      placeholder="ENTER_SUBJECT_STRAND_FOR_ALIGNMENT..."
+                      className={`w-full h-32 px-4 py-3 bg-brand-bg border rounded-xl font-mono text-xs text-brand-accent focus:outline-none transition-all resize-none ${!validateDNA(subjectDNA) ? 'border-brand-danger/50' : 'border-brand-border focus:border-brand-accent'}`}
+                    />
+                    <div className="absolute bottom-4 right-4 text-[10px] font-mono text-brand-muted opacity-40">
+                      {subjectDNA.length}nt
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-[10px] font-mono text-brand-muted uppercase tracking-widest mr-2">Samples:</span>
                     {['ATGC', 'GCTA'].map(s => (
                       <button 
                         key={s} 
-                        onClick={() => setSubjectDNA(s)}
-                        className="px-3 py-1 bg-brand-bg border border-brand-border rounded text-[10px] font-mono text-brand-muted hover:text-brand-accent hover:border-brand-accent transition-all"
+                        onClick={() => {
+                          setSubjectDNA(s);
+                          setError(null);
+                        }}
+                        className="px-3 py-1 bg-brand-bg2 border border-brand-border rounded-full text-[10px] font-mono text-brand-muted hover:text-brand-accent hover:border-brand-accent transition-all"
                       >
-                        Sample: {s}
+                        {s}
                       </button>
                     ))}
+                    <div className="w-px h-4 bg-brand-border mx-2" />
                     <button 
-                      onClick={() => setSubjectDNA(generateRandomDNA(8))}
-                      className="px-3 py-1 bg-brand-bg border border-brand-border rounded text-[10px] font-mono text-brand-accent hover:bg-brand-accent/10 transition-all flex items-center gap-2"
+                      onClick={() => {
+                        setSubjectDNA(generateRandomDNA(8));
+                        setError(null);
+                      }}
+                      className="px-3 py-1 bg-brand-bg2 border border-brand-border rounded text-[10px] font-mono text-brand-accent hover:bg-brand-accent/10 transition-all flex items-center gap-2"
                     >
                       <Zap size={10} />
                       Random 8nt
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setSubjectDNA(generateRandomDNA(12));
+                        setError(null);
+                      }}
+                      className="px-3 py-1 bg-brand-bg2 border border-brand-border rounded text-[10px] font-mono text-brand-accent hover:bg-brand-accent/10 transition-all flex items-center gap-2"
+                    >
+                      <Zap size={10} />
+                      Random 12nt
                     </button>
                   </div>
                 </div>
@@ -280,62 +479,26 @@ export default function HomeView() {
         </div>
       </section>
 
-      {/* 03 - Algorithm Choices */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-[10px] text-brand-muted uppercase tracking-[0.2em]">
-            <span className="italic font-serif normal-case text-brand-accent mr-1">Step</span> 03 — Algorithm Version
-          </span>
-          <div className="flex-1 h-px bg-brand-border"></div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[
-            { id: 'v1', name: 'Linear Scan', tag: 'v1 · Linear Scan', desc: 'Basic Index search with linear repetition scan.' },
-            { id: 'v2', name: 'Randomised', tag: 'v2 · Random Template', desc: 'Generates random template from N nucleotides.' },
-            { id: 'v3', name: 'Benchmark', tag: 'v3 · Scaling Benchmark', desc: '10 doubling runs with performance analytics.' },
-            { id: 'v4', name: 'Coming Soon', tag: 'v4 · Advanced', desc: 'Register your own version via settings.', disabled: true },
-          ].map((v) => (
-            <button
-              key={v.id}
-              disabled={v.disabled}
-              onClick={() => setVersion(v.id as AlignmentVersion)}
-              className={`p-6 text-left border rounded-2xl transition-all relative group ${
-                v.disabled ? 'opacity-40 cursor-not-allowed border-dashed bg-brand-bg/20' : 
-                version === v.id 
-                  ? 'border-brand-accent bg-brand-accent/[0.04] ring-1 ring-brand-accent' 
-                  : 'border-brand-border glass-card hover:border-brand-muted'
-              }`}
-            >
-              <div className="flex flex-col h-full justify-between gap-4">
-                <div>
-                  <div className={`text-[9px] font-mono uppercase tracking-[0.2em] px-2 py-0.5 rounded inline-block ${version === v.id ? 'bg-brand-accent text-brand-bg' : 'bg-brand-accent/10 text-brand-accent'}`}>
-                    {v.tag}
-                  </div>
-                  <h4 className="font-bold text-lg mt-3 text-brand-text group-hover:text-brand-accent transition-colors">{v.name}</h4>
-                  <p className="text-xs text-brand-muted mt-2 font-sans leading-relaxed">{v.desc}</p>
-                </div>
-                {v.disabled && <div className="absolute top-4 right-4 text-[9px] font-mono bg-orange-500/10 text-orange-500 border border-orange-500/30 px-2 py-0.5 rounded tracking-widest uppercase">Soon</div>}
-              </div>
-            </button>
-          ))}
-        </div>
-      </section>
-
+      {/* Run Alignment */}
       <button
         onClick={handleRun}
-        disabled={isProcessing || !subjectDNA || (!useCustomTemplate && !selectedTemplate.sequence && version === 'v1')}
-        className="w-full bg-brand-accent hover:bg-brand-accent/90 disabled:opacity-30 text-brand-bg font-mono font-bold py-5 rounded-2xl flex items-center justify-center gap-3 transition-all transform active:scale-95 shadow-[0_4px_20px_rgba(61,220,110,0.2)] tracking-widest uppercase text-sm"
+        disabled={isProcessing}
+        className={`w-full h-14 rounded-xl flex items-center justify-center gap-3 font-mono font-bold tracking-[0.2em] transition-all relative overflow-hidden group ${
+          isProcessing 
+            ? 'bg-brand-accent/20 text-brand-accent cursor-wait' 
+            : 'bg-brand-accent text-brand-bg hover:bg-brand-accent2 hover:scale-[1.01] active:scale-[0.99] shadow-[0_0_20px_rgba(61,220,110,0.2)]'
+        }`}
       >
+        <div className="scanning-bar group-hover:opacity-40 transition-opacity" />
         {isProcessing ? (
-          <div className="flex items-center gap-3">
-            <div className="w-5 h-5 border-2 border-brand-bg/30 border-t-brand-bg rounded-full animate-spin"></div>
-            <span>Processing_Algorithm...</span>
-          </div>
+          <>
+            <div className="w-5 h-5 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" />
+            PROCESSING_ALIGNMENT
+          </>
         ) : (
           <>
-            <Play size={18} fill="currentColor" />
-            <span>▶ Run_Alignment</span>
+            <Play size={20} fill="currentColor" />
+            RUN ALIGNMENT
           </>
         )}
       </button>

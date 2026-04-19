@@ -6,25 +6,52 @@
   --font-mono: "Space Mono", ui-monospace, SFMono-Regular, monospace;
   
   --color-brand-bg: #0a0f0a;
+  --color-brand-bg2: #111811;
   --color-brand-card: #162016;
   --color-brand-border: #2a3a2a;
   --color-brand-accent: #3ddc6e;
+  --color-brand-accent2: #5efa8c;
   --color-brand-accent-glow: rgba(61, 220, 110, 0.15);
   --color-brand-text: #e8f5e8;
   --color-brand-muted: #7a9a7a;
+  --color-brand-danger: #ff6b6b;
+  --color-brand-warning: #ffc947;
 }
 
 @layer base {
   body {
-    @apply bg-brand-bg text-brand-text;
+    @apply bg-brand-bg text-brand-text selection:bg-brand-accent/30;
   }
 }
 
 @layer components {
-  .nt-A { color: #ff6b6b; }
-  .nt-T { color: #4dabf7; }
-  .nt-G { color: #3ddc6e; }
-  .nt-C { color: #fcc419; }
+  /* DNA animated background in body */
+  .dna-bg {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.15;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 40px,
+      rgba(61, 220, 110, 0.05) 40px,
+      rgba(61, 220, 110, 0.05) 41px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 40px,
+      rgba(61, 220, 110, 0.05) 40px,
+      rgba(61, 220, 110, 0.05) 41px
+    );
+  }
+
+  .nt-A { color: #ff7b7b; }
+  .nt-T { color: #7bc8ff; }
+  .nt-G { color: #7bff9e; }
+  .nt-C { color: #ffdc7b; }
   
   .glass-card {
     @apply bg-brand-card/60 backdrop-blur-xl border border-brand-border rounded-2xl shadow-2xl;
@@ -63,5 +90,13 @@
   @keyframes cursor-blink {
     0%, 100% { opacity: 1; }
     50% { opacity: 0; }
+  }
+
+  .action-card {
+    @apply bg-brand-card border border-brand-border rounded-xl p-6 cursor-pointer transition-all duration-300 relative overflow-hidden;
+    background: radial-gradient(circle at 50% 0%, rgba(61, 220, 110, 0.05) 0%, transparent 70%), var(--color-brand-card);
+  }
+  .action-card:hover {
+    @apply border-brand-accent -translate-y-0.5;
   }
 }
