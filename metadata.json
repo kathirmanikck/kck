@@ -1,0 +1,6 @@
+{
+  "name": "BioAlign",
+  "description": "A clean biological tool for DNA sequence alignment, featuring linear scanning, random sequence generation, and performance benchmarking for student projects.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

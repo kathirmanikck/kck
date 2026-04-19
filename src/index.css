@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-brand-bg: #0a0f0a;
+  --color-brand-card: #162016;
+  --color-brand-border: #2a3a2a;
+  --color-brand-accent: #3ddc6e;
+  --color-brand-accent-glow: rgba(61, 220, 110, 0.15);
+  --color-brand-text: #e8f5e8;
+  --color-brand-muted: #7a9a7a;
+}
+
+@layer base {
+  body {
+    @apply bg-brand-bg text-brand-text;
+  }
+}
+
+@layer components {
+  .nt-A { color: #ff6b6b; }
+  .nt-T { color: #4dabf7; }
+  .nt-G { color: #3ddc6e; }
+  .nt-C { color: #fcc419; }
+  
+  .glass-card {
+    @apply bg-brand-card/60 backdrop-blur-xl border border-brand-border rounded-2xl shadow-2xl;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Hardware 'LCD' Glowing Text */
+  .lcd-text {
+    @apply text-brand-accent transition-all duration-300;
+    text-shadow: 0 0 10px rgba(61, 220, 110, 0.5);
+  }
+
+  /* Scientific 'Scanning' Animation */
+  @keyframes scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+
+  .scanning-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--color-brand-accent), transparent);
+    animation: scanline 3s linear infinite;
+    opacity: 0.2;
+    pointer-events: none;
+  }
+
+  /* Terminal Cursor */
+  .cursor-blink {
+    animation: cursor-blink 1s step-end infinite;
+  }
+
+  @keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+}
